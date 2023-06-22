@@ -1,0 +1,519 @@
+---
+title: "Untitled"
+author: "Lorenzo Martini"
+date: "2023-05-30"
+output: html_document
+---
+#Monocle3 and Cicero processing of 10X multimodal PBMC dataset
+##INSTALL REQUIRED PACKAGES IF NEEDED
+N.B. This may require the installation of local libraries. Please check the README file of the project for a list of required packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install()
+
+BiocManager::install(c('BiocGenerics', 'DelayedArray', 'DelayedMatrixStats',
+                       'limma', 'lme4', 'S4Vectors', 'SingleCellExperiment',
+                       'SummarizedExperiment', 'batchelor', 'Matrix.utils',
+                       'HDF5Array', 'terra', 'ggrastr'))
+
+
+if (!requireNamespace("devtools", quietly = TRUE)) 
+  install.packages("devtools", dependencies = c("Depends"))
+
+{if (!requireNamespace("memoise", quietly = TRUE)) 
+  install.packages("memoise", dependencies = c("Depends"))
+
+if (!requireNamespace("miniUI", quietly = TRUE)) 
+  install.packages("miniUI", dependencies = c("Depends"))
+
+if (!requireNamespace("shiny", quietly = TRUE))
+  install.packages("shiny", dependencies = c("Depends"))
+
+if (!requireNamespace("htmltools", quietly = TRUE))
+  install.packages("htmltools", dependencies = c("Depends"))
+
+if (!requireNamespace("httpuv", quietly = TRUE))
+  install.packages("httpuv", dependencies = c("Depends"))
+
+if (!requireNamespace("httpuv", quietly = TRUE))
+  install.packages("httpuv", dependencies = c("Depends"))
+
+if (!requireNamespace("later", quietly = TRUE))
+  install.packages("later", dependencies = c("Depends"))
+
+if (!requireNamespace("promises", quietly = TRUE))
+  install.packages("promises", dependencies = c("Depends"))
+
+if (!requireNamespace("xtable", quietly = TRUE))
+  install.packages("xtable", dependencies = c("Depends"))
+
+if (!requireNamespace("pkgbuild", quietly = TRUE))
+  install.packages("pkgbuild", dependencies = c("Depends"))
+
+if (!requireNamespace("profvis", quietly = TRUE))
+  install.packages("profvis", dependencies = c("Depends"))
+
+if (!requireNamespace("remotes", quietly = TRUE))
+  install.packages("remotes", dependencies = c("Depends"))
+
+if (!requireNamespace("sessioninfo", quietly = TRUE))
+  install.packages("sessioninfo", dependencies = c("Depends"))
+
+if (!requireNamespace("urlchecker", quietly = TRUE))
+  install.packages("urlchecker", dependencies = c("Depends"))
+}
+
+devtools::install_github("cole-trapnell-lab/cicero-release", ref = "monocle3")
+BiocManager::install(c("Gviz", "GenomicRanges", "rtracklayer"))
+
+if (!requireNamespace("tidyverse", quietly = TRUE)) 
+  install.packages("tidyverse", dependencies = c("Depends"))
+
+if (!requireNamespace("aricode", quietly = TRUE)) 
+  install.packages("aricode", dependencies = c("Depends"))
+
+if (!requireNamespace("Seurat", quietly = TRUE)) 
+  install.packages("Seurat", dependencies = c("Depends"))
+
+if (!requireNamespace("R.utils", quietly = TRUE)) 
+  install.packages("R.utils", dependencies = c("Depends"))
+
+if (!requireNamespace("SeuratWrappers", quietly = TRUE)) 
+  remotes::install_github('satijalab/seurat-wrappers')
+
+if (!requireNamespace("Signac", quietly = TRUE)) 
+  install.packages("Signac", dependencies = c("Depends"))
+
+if (!requireNamespace("readsparse", quietly = TRUE)) 
+  install.packages("readsparse", dependencies = c("Depends"))
+
+if (!requireNamespace("leiden", quietly = TRUE)) 
+  install.packages("leiden", dependencies = c("Depends"))
+
+if (!requireNamespace("hdf5r", quietly = TRUE)) 
+  install.packages("hdf5r", dependencies = c("Depends"))
+
+install.packages('BiocManager', dependencies = c("Depends"))
+BiocManager::install()
+BiocManager::install('multtest')
+
+if (!requireNamespace("data.table", quietly = TRUE)) 
+  install.packages("data.table", dependencies = c("Depends"))
+
+if (!requireNamespace("cellranger", quietly = TRUE)) 
+  install.packages("cellranger", dependencies = c("Depends"))
+
+if (!requireNamespace("readxl", quietly = TRUE)) 
+  install.packages("readxl", dependencies = c("Depends"))
+
+if (!requireNamespace("sctransform", quietly = TRUE)) 
+  install.packages("sctransform", dependencies = c("Depends"))
+
+if (!requireNamespace("class", quietly = TRUE)) 
+  install.packages("class", dependencies = c("Depends"))
+
+if (!requireNamespace("GenomeInfoDb", quietly = TRUE)) 
+  install.packages("GenomeInfoDb", dependencies = c("Depends"))
+
+BiocManager::install(c("org.Mm.eg.db", "org.Hs.eg.db"))
+devtools::install_github("cole-trapnell-lab/garnett", ref="monocle3")
+devtools::install_github('satijalab/seurat-data')
+
+if (!requireNamespace("SeuratDisk", quietly = TRUE)) {
+  remotes::install_github("mojaveazure/seurat-disk")
+}
+
+```
+
+## R Libraries
+
+Here we present all the steps to properly analyze the multimodal dataset with the Cole Trapnell Lab tools.
+
+DATA available at: https://www.10xgenomics.com/resources/datasets/10-k-human-pbm-cs-multiome-v-1-0-chromium-controller-1-standard-2-0-0
+
+Filtered feature barcode matrix MEX (DIR)
+
+Filtered feature barcode matrix (HDF5)
+
+ATAC peak locations (BED)
+
+ATAC Per fragment information file (TSV.GZ)
+
+ATAC Per fragment information index (TSV.GZ index)
+
+One needs to load all the necessary packages listed below.
+
+```{r lib}
+library(monocle3)
+library(cicero)
+library(Matrix)
+library(dplyr)
+library(ggplot2)
+library(garnett)
+library(aricode)
+library(org.Hs.eg.db)
+library(SeuratDisk)
+```
+
+First of all, we load the data. In this case the data matrix is only one with both data type, meaning a matrix with the cells as column and the rows are first the genes and then the peaks. Therefore, one needs to divide the matrix in its two parts, because Monocle3 is not able to properly differentiate the two.
+
+```{r load, echo=TRUE}
+#loading of the data
+matrix <- readMM("../DATA/filtered_feature_bc_matrix/matrix.mtx")
+cells <- read.table("../DATA/filtered_feature_bc_matrix/barcodes.tsv")
+features <- read.delim("../DATA/filtered_feature_bc_matrix/features.tsv", header=FALSE)
+
+#division of the fetures between genes and peaks
+genes <- features[features$V3 == "Gene Expression",]
+colnames(genes)[2] <- "gene_short_name"
+peaks <- features[features$V3 == "Peaks",]
+
+row.names(matrix) <- features$V2
+colnames(matrix) <- cells$V1
+
+#creation of the two matrices, accordingly to the features
+RNA_matrix <- matrix[genes$gene_short_name,]
+ATAC_matrix <- matrix[peaks$V2,]
+```
+
+#Gene Expression data processing and analysis
+
+Next, the two matrices are processed separately, following the suggested workflow, better discussed in their tutorial [].
+
+We start with the Gene Expression data.
+
+The processing ends with the visualiztion of the clustered cells. The main parameter one can fine-tune is the resolution. Here the value is the one advised for datasets this large, but one can change if it appears result in too many or too few clusters.
+
+```{r}
+#Creation of the CDS object
+CDS_RNA <- new_cell_data_set(RNA_matrix)
+#adding gene names as a metadata for rows, useful for later functions
+rowData(CDS_RNA)$gene_short_name <- genes$gene_short_name
+CDS_RNA <- detect_genes(CDS_RNA)
+CDS_RNA <- estimate_size_factors(CDS_RNA)
+#preprocessing consisting in normalization, scaling, and dimansional reduction (both LSI and PCA)
+CDS_RNA <- preprocess_cds(CDS_RNA, method = "LSI")
+CDS_RNA <- preprocess_cds(CDS_RNA, method = "PCA")
+#non-linear dimensional reduction UMAP, to visualize the cells in 2D
+CDS_RNA <- reduce_dimension(CDS_RNA, reduction_method = 'UMAP', 
+                              preprocess_method = "PCA")
+#clustering of the cells, based on the UMAP
+CDS_RNA <- cluster_cells(CDS_RNA, resolution=0.5e-3)
+#final plotting
+plot_cells(CDS_RNA,reduction_method = 'UMAP', group_label_size = 8)  + labs(title = "Monocle3") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18))
+ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_clustering_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5)
+```
+
+After processing, one can perform differential expression analysis, to understand which genes identifies the cell clusters.
+
+```{r}
+marker_test_res_rna <- top_markers(CDS_RNA)
+head(marker_test_res_rna)
+```
+
+```{r}
+#from all the DE genes, select the top ones for each cluster
+top_specific_markers_rna <- marker_test_res_rna %>%
+                    filter(fraction_expressing >= 0.10) %>%
+                    filter(specificity >= 0.15) %>%
+                    group_by(cell_group) %>%
+                    top_n(1, pseudo_R2)
+#plot them and their expression level on the clusters
+top_specific_marker_ids <- unique(top_specific_markers_rna %>% pull(gene_id))
+plot_genes_by_group(CDS_RNA,
+                    top_specific_marker_ids,
+                    group_cells_by="cluster",
+                    ordering_type="maximal_on_diag") +  guide_legend(title = "")
+
+ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_DE_Monocle.pdf", width = 720, height = 900, units= "px",scale = 3.5 )
+
+```
+
+#ScATAC-seq data separate analysis
+
+The same workflow is necessary to process the epigenetic data. One needs to remeber to binarize the matrix, before going on. Again the final result is the visulaiztion of the cells divided in clusters, which should be, in some way, similar to the previous one.
+```{r}
+#binarization of the matrix
+ATAC_matrix@x[ATAC_matrix@x > 0] <- 1
+#Creation of the CDS object for the ATAC data
+CDS_ATAC <- new_cell_data_set(ATAC_matrix)
+rowData(CDS_ATAC)$gene_short_name <- peaks$V2
+#the process and function are totally analogous to  before
+CDS_ATAC <- detect_genes(CDS_ATAC)
+  CDS_ATAC <- estimate_size_factors(CDS_ATAC)
+  CDS_ATAC <- preprocess_cds(CDS_ATAC, method = "LSI")
+  CDS_ATAC <- preprocess_cds(CDS_ATAC, method = "PCA")
+  CDS_ATAC <- reduce_dimension(CDS_ATAC, reduction_method = 'UMAP', 
+                              preprocess_method = "LSI")
+  CDS_ATAC <- cluster_cells(CDS_ATAC, resolution=0.7e-3)
+#plot the results based on ATAC data alone
+plot_cells(CDS_ATAC,reduction_method = 'UMAP', group_label_size = 8)  + labs(title = "Monocle3") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"), axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_clustering_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+Agein one can perform differential analysis, to understand which peaks characterize the clusters. In this case, the process tends to be more lengthy and, moreover, the results are not particularly satisfactory. Therefore, it is not always particularly useful to perform.
+
+```{r}
+marker_test_res_atac <- top_markers(CDS_ATAC)
+head(marker_test_res_atac)
+```
+
+```{r}
+top_specific_markers_atac <- marker_test_res_atac %>%
+                    filter(fraction_expressing >= 0.10) %>%
+                    filter(specificity >= 0.15) %>%
+                    group_by(cell_group) %>%
+                    top_n(1, pseudo_R2)
+top_specific_marker_ids_atac <- unique(top_specific_markers_atac %>% pull(gene_id))
+plot_genes_by_group(CDS_ATAC,
+                    top_specific_marker_ids_atac,
+                    group_cells_by="cluster",
+                    ordering_type="maximal_on_diag")
+ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_DE_Monocle.pdf", width = 720, height = 900, units= "px",scale = 3.5 )
+
+```
+
+It is useful to save the objects
+```{r}
+saveRDS(CDS_RNA,"CDS_RNA")
+saveRDS(CDS_ATAC,"CDS_ATAC")
+```
+
+#Cell type classification with Garnett
+Now, one needs to classify the cells. The most direct way to do it when working with Monocle is to employ Garnett, since it has a direct integration.
+In this case, since we are working with a PBMC sample, we can use the trained classifier directly provided by Garnett from here: https://cole-trapnell-lab.github.io/garnett/classifiers/
+
+```{r}
+#load the classifier
+pbmc_classifier <- readRDS("../DATA/garnett/hsPBMC_20191017.RDS")
+#classify the dataset with that, employing the gene expression data
+CDS_RNA <- classify_cells(CDS_RNA, pbmc_classifier,
+                           db = org.Hs.eg.db,
+                           cluster_extend = TRUE,
+                           cds_gene_id_type = "SYMBOL")
+```
+
+```{r}
+#plot the classified cells
+plot_cells(CDS_RNA,
+           color_cells_by="cluster_ext_type", label_cell_groups = FALSE, )  + ggtitle("Garnett Learned Cell Types") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size=6), title = "Cell types", title.theme = element_text(size = 20), label.theme = element_text(size = 14)) )
+ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_classification_Garnett.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
+```{r}
+cluster_ext_type <- as.data.frame(CDS_RNA@colData@listData[["cluster_ext_type"]])
+colnames(cluster_ext_type) <- "CLASS"
+CDS_ATAC@colData@listData[["cluster_ext_type"]] <- cluster_ext_type$CLASS
+plot_cells(CDS_ATAC,
+           color_cells_by="cluster_ext_type", label_cell_groups = FALSE, )  + ggtitle("Garnett Learned Cell Types") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size=6), title = "Cell types", title.theme = element_text(size = 20), label.theme = element_text(size = 14)) )
+ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_classification_Garnett.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
+#Classifications comparison
+
+With all the previous processes, one obtains various classifications of the cells. To understand how much the are similar between each other, one can employ information theory concepts like ARI and AMI. In particular we want to understand if the clustering obtained from the processing of the data is consistent with the cell-type classification.
+
+```{r}
+MON_class_RNA <- as.data.frame(CDS_RNA@clusters@listData[["UMAP"]][["clusters"]])
+colnames(MON_class_RNA) <- "CLASS"
+MON_class_RNA$CLASS <- as.factor(MON_class_RNA$CLASS)
+#levels(MON_class_RNA$CLASS) <- paste0(levels(MON_class_RNA$CLASS), "_R")
+
+MON_class_ATAC <- as.data.frame(CDS_ATAC@clusters@listData[["UMAP"]][["clusters"]])
+colnames(MON_class_ATAC) <- "CLASS"
+MON_class_ATAC$CLASS <- as.factor(MON_class_ATAC$CLASS)
+#levels(MON_class_ATAC$CLASS) <- paste0(levels(MON_class_ATAC$CLASS), "_A")
+
+cluster_ext_type <- as.data.frame(CDS_RNA@colData@listData[["cluster_ext_type"]])
+colnames(cluster_ext_type) <- "CLASS"
+```
+
+```{r}
+print("RNA vs ATAC")
+print(paste0("ARI: ",round(ARI(MON_class_ATAC$CLASS, MON_class_RNA$CLASS), digits = 3)))       
+print(paste0("AMI: ",round(AMI(MON_class_ATAC$CLASS, MON_class_RNA$CLASS), digits = 3)))       
+
+print("Cell-types vs RNA")
+print(paste0("ARI: ",round(ARI(cluster_ext_type$CLASS, MON_class_RNA$CLASS), digits = 3)))       
+print(paste0("AMI: ",round(AMI(cluster_ext_type$CLASS, MON_class_RNA$CLASS), digits = 3)))
+
+print("Cell-types vs ATAC")
+print(paste0("ARI: ",round(ARI(cluster_ext_type$CLASS, MON_class_ATAC$CLASS), digits = 3)))       
+print(paste0("AMI: ",round(AMI(cluster_ext_type$CLASS, MON_class_ATAC$CLASS), digits = 3)))      
+```
+```{r}
+
+CDS_RNA@colData@listData[["MON_class_ATAC"]] <- MON_class_ATAC$CLASS
+CDS_ATAC@colData@listData[["MON_class_RNA"]] <- MON_class_RNA$CLASS
+
+plot_cells(CDS_RNA,reduction_method = 'UMAP', group_label_size = 8, color_cells_by = "MON_class_ATAC", label_groups_by_cluster = FALSE)  + labs(title = "ATAC transfered to RNA") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_to_RNA_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+
+
+plot_cells(CDS_ATAC,reduction_method = 'UMAP', group_label_size = 8, color_cells_by =  "MON_class_RNA", label_groups_by_cluster = FALSE)  + labs(title = "RNA transfered to ATAC") + theme(plot.title = element_text(hjust = 0.5, size = 25,face = "bold"),axis.title = element_text(size = 18))
+ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_to_ATAC_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+
+```
+
+#Gene Activity Matrix (GAM)
+
+Next is the Gene Activity Matrix calculation from ATAC data.
+
+The gene activity is a medium between gene expression and chromatin accessibility. It describes the acessibility of the genetic regions inside the cells of the datasets. There are different ways to create it, here we expose how to do it with Cicero.
+
+Preliminary, one needs to aggregate the CDS, as shown below.
+
+```{r,eval=FALSE}
+umap_coords <- reducedDims(CDS_ATAC)$UMAP
+cicero_cds <- make_cicero_cds(CDS_ATAC, reduced_coordinates = umap_coords)
+```
+
+Then, employing a geneome reference, one can calculate the connections, meaning the co-accessibility scores of the peaks in the dataset. The co-accessbility calculation is very lennghty and compuattionally heavy, so we suggest to perform it consciously.
+
+```{r}
+genome_ref = read.table("../DATA/genomes/hg38/hg38.p13.chrom.sizes.txt")
+genome_ref <- genome_ref[1:24,]
+hg38 <- genome_ref[1:24,]
+#hg38$V1 <- as.character.factor(hg38$V1)
+hg38 <- Seqinfo(hg38$V1, seqlengths= hg38$V2)
+hg38@genome[] <- "hg38"
+```
+
+```{r, eval=FALSE}
+conns <- run_cicero(cicero_cds, genome_ref, sample_num = 2) 
+```
+```{r, echo=FALSE}
+conns <- readRDS("../DATA/conns/conns_10k_Multiome")
+```
+
+After that, one needs to load a gene annotation file, containing all the genomic coordinates of the genes of the given genome. With that Cicero labels all the peaks that overlap the first base of the genes as promoters.
+
+```{r}
+gene_anno <- rtracklayer::readGFF("../DATA/genomes/hg38/GCF_000001405.39_GRCh38.p13_genomic.gtf.gz")
+chr2acc <- read.csv("../DATA/genomes/hg38/chr2acc.txt", sep = "\t")
+gene_anno <- gene_anno[gene_anno$seqid %in% chr2acc$Accession.version,]
+gene_anno$seqid <- as.factor(as.character(gene_anno$seqid))
+levels(gene_anno$seqid) <- chr2acc$X.Chromosome
+gene_anno$seqid <- paste0("chr", gene_anno$seqid)
+
+
+gene_anno$chromosome <- gene_anno$seqid
+#gene_anno$chromosome <- paste0("chr", gene_anno$seqid)
+gene_anno$gene <- gene_anno$gene_id
+gene_anno$transcript <- gene_anno$transcript_id
+gene_anno$symbol <- gene_anno$gene
+
+
+
+pos <- subset(gene_anno, strand == "+")
+pos <- pos[order(pos$start),] 
+# remove all but the first exons per transcript
+pos <- pos[!duplicated(pos$transcript),] 
+# make a 1 base pair marker of the TSS
+pos$end <- pos$start + 1 
+
+neg <- subset(gene_anno, strand == "-")
+neg <- neg[order(neg$start, decreasing = TRUE),] 
+# remove all but the first exons per transcript
+neg <- neg[!duplicated(neg$transcript),] 
+neg$start <- neg$end - 1
+
+gene_annotation_sub <- rbind(pos, neg)
+
+# Make a subset of the TSS annotation columns containing just the coordinates 
+# and the gene name
+gene_annotation_sub <- gene_annotation_sub[,c("chromosome", "start", "end", "symbol")]
+
+# Rename the gene symbol column to "gene"
+names(gene_annotation_sub)[4] <- "gene"
+
+CDS_ATAC <- annotate_cds_by_site(CDS_ATAC, gene_annotation_sub)
+```
+
+```{r}
+con_val <- conns[conns$coaccess > 0,]
+con_val <- con_val[!is.na(con_val$coaccess),]
+coaccess <- signif(mean(con_val$coaccess), digits = 2)
+unnorm_ga <- build_gene_activity_matrix(CDS_ATAC, conns, coaccess_cutoff = coaccess)
+unnorm_ga <- unnorm_ga[!Matrix::rowSums(unnorm_ga) == 0, 
+                       !Matrix::colSums(unnorm_ga) == 0]
+num_genes <- pData(CDS_ATAC)$num_genes_expressed
+names(num_genes) <- row.names(pData(CDS_ATAC))
+
+cicero_gene_activities <- normalize_gene_activities(unnorm_ga, num_genes)
+```
+
+After the GAM creation, one can process it, treating it like a gene expression matrix.
+
+```{r}
+cicero_cell <- colnames(cicero_gene_activities)
+lenght1 <- length(cicero_cell)
+cicero_gene <- row.names(cicero_gene_activities)
+lenght2 <- length(cicero_gene)
+c_c <- matrix(cicero_cell, nrow = lenght1, dimnames = list(cicero_cell,c("Cells")))
+c_g<- matrix(cicero_gene, nrow = lenght2, dimnames = list(cicero_gene,c("gene_short_name")))
+
+
+## processing GAM with Cicero
+CDS_ACTIVITY <-  suppressWarnings(new_cell_data_set(cicero_gene_activities, cell_metadata = c_c, gene_metadata = c_g))
+```
+
+```{r}
+CDS_ACTIVITY <- detect_genes(CDS_ACTIVITY)
+CDS_ACTIVITY <- estimate_size_factors(CDS_ACTIVITY)
+CDS_ACTIVITY <- preprocess_cds(CDS_ACTIVITY, method = "PCA")
+
+CDS_ACTIVITY <- reduce_dimension(CDS_ACTIVITY, reduction_method = 'UMAP', 
+                               preprocess_method = "PCA")
+CDS_ACTIVITY = cluster_cells(CDS_ACTIVITY, resolution=1e-3)
+
+plot_cells(CDS_ACTIVITY,reduction_method = 'UMAP', group_label_size = 8)  + labs(title = "Cicero Gene Activity") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18))
+ggsave(path = "../TMPResults/IMAGES/", filename = "Activity_clustering_Cicero.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+
+```
+
+It is useful to plot the cell-types labels (or the gene expression-derived clusters), to ensure that the results are, in some sort, coherent with the previous ones.
+
+```{r}
+#insert the classifications inside the CDS
+CDS_ACTIVITY@colData@listData[["MON_class_RNA"]] <- MON_class_RNA$CLASS
+CDS_ACTIVITY@colData@listData[["cluster_ext_type"]] <- cluster_ext_type$CLASS
+plot_cells(CDS_ACTIVITY,
+           color_cells_by="cluster_ext_type", label_cell_groups = FALSE, )  + ggtitle("Cicero") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size=6), title = "Cell types", title.theme = element_text(size = 20), label.theme = element_text(size = 14)) )
+ggsave(path = "../TMPResults/IMAGES/", filename = "Activity_celltype_Cicero.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
+#Comparative Differential analysis
+
+The comparative Differential analysis consists in performing differenatial activity analysis on the GAM data to understand if the genes that are related to specific cell type (or cluster), at the transcriptomic level (i.e., DE genes and marker genes), appear to be also differentially active, meaning they are specific also at the epigenomic level. To do so, one takes the processed GAM, and performs the differential analysis, based on diffrent classifications, including: GAM derived clustering cell-type classification scRNA-seq derived clustering From the results, one looks for the wanted genes, to look if they are related to the same group of cells.
+
+In this way one makes a cross-modality assessment of the genes
+
+First, we create the list of the genes we want to investigate the accessibility.
+
+```{r}
+marker_genes = c("CD34", "THY1", "ENG", "KIT", "PROM1","NCAM1", "FCGR3A","CD14", "FCGR1A", "CD68", "S100A12","CD19", "MS4A1", "CD79A","CD4", "FOXP3", "IL2RA", "IL7R","CD8A", "CD8B","IL3RA", "CD1C", "BATF3", "THBD", "CD209")
+marker_activity_clust <- top_markers(CDS_ACTIVITY)
+marker_activity_clust_in_marker_genes <- marker_activity_clust[marker_activity_clust$gene_short_name %in% marker_genes,]
+marker_activity_clust_in_marker_genes
+```
+```{r}
+marker_expression_clust <- top_markers(CDS_ACTIVITY, group_cells_by = "MON_class_RNA")
+marker_expression_clust_in_marker_genes <- marker_expression_clust[marker_expression_clust$gene_short_name %in% marker_genes,]
+marker_expression_clust_in_marker_genes
+```
+
+```{r}
+
+marker_activity_cell_type <- top_markers(CDS_ACTIVITY, group_cells_by = "cluster_ext_type")
+marker_activity_cell_type_in_marker_genes <- marker_activity_cell_type[marker_activity_cell_type$gene_short_name %in% marker_genes,]
+
+marker_activity_cell_type_in_marker_genes
+```
+

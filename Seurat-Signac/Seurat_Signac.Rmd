@@ -1,0 +1,350 @@
+---
+title: "Untitled"
+author: "Lorenzo Martini"
+date: "2023-05-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r, include=FALSE}
+if (!requireNamespace("renv", quietly = TRUE)) 
+  install.packages("renv", dependencies = c("Depends"))
+
+renv::restore()
+```
+
+#Seurat and Signac processing of 10X multimodal PBMC dataset
+
+Here we present all the steps to properly analyze the multimodal dataset with the Satija Lab tools.
+
+DATA available at: https://www.10xgenomics.com/resources/datasets/10-k-human-pbm-cs-multiome-v-1-0-chromium-controller-1-standard-2-0-0
+
+Filtered feature barcode matrix MEX (DIR)
+
+Filtered feature barcode matrix (HDF5)
+
+ATAC peak locations (BED)
+
+ATAC Per fragment information file (TSV.GZ)
+
+ATAC Per fragment information index (TSV.GZ index)
+
+One needs to load all the necessary packages listed below.
+
+```{r lib}
+library(Seurat)
+library(Signac)
+library(dplyr)
+library(ggplot2)
+library(EnsDb.Hsapiens.v86)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(SeuratData)
+library(SeuratDisk)
+```
+First of all, we load the data. In this case the data matrix is only one with both data type, meaning a matrix with the cells as column and the rows are first the genes and then the peaks. Seurat provides the function to read directly the .h5 file format of the data, provided by 10x genomics, which contains all the data without the necessity to load matrix and features separately. Moreover in this way it is easier to divide the data. Moreover one needs to load the fragment file path. Since the fragment file is an unbearable file to store in the Seuart Object during the analysis, one loads only the path to it.
+
+```{r pressure, echo=TRUE}
+counts <- Read10X_h5("../DATA/filtered_feature_bc_matrix/10k_PBMC_Multiome_nextgem_Chromium_Controller_filtered_feature_bc_matrix.h5")
+fragments <- "../DATA/filtered_feature_bc_matrix/10k_PBMC_Multiome_nextgem_Chromium_Controller_atac_fragments.tsv.gz"
+```
+
+The first step is the creation of the Seurat Object, a dedicated structure which will contain all the data and the results. One starts by creating it using the scRNA-seq data, labeled as 'Gene Exprssion' inside the matrix.
+
+```{r}
+SEU_Multi <- CreateSeuratObject(
+  counts = counts$`Gene Expression`,
+  assay = "RNA"
+)
+```
+
+Second one creates a seprated assay for the epigenetic data, creating in this way inside the Seurat Objetct a dedicated section for the epigenetic analyses.
+
+```{r}
+SEU_Multi[["ATAC"]] <- CreateChromatinAssay(
+  counts = counts$Peaks,
+  sep = c(":", "-"), #indicates which are the separators for the peak notation of the file
+  fragments = fragments
+)
+```
+
+Before going on, it is useful to already load also the genomic annotation, meaning all the information of the chromosomes lenght, in specific format. One can load an external file, but for the most used genomes there are packeges providing them. One needs ALWAYS to look at which genome version the data have been alligned to. In this case, the genome is Hg38 the latest human genome version.
+```{r}
+annotation <- GetGRangesFromEnsDb(ensdb = EnsDb.Hsapiens.v86)
+annotation@seqinfo@seqnames <- paste0("chr", annotation@seqinfo@seqnames)
+```
+
+After loading, one needs to change the style of the annotation, by just adding chr for the chromosomes names.
+
+```{r}
+levels(annotation@seqnames@values) <- paste0("chr", levels(annotation@seqnames@values))
+genome(annotation) <- "hg38"
+```
+
+check if the modification have been actually made
+```{r}
+annotation
+```
+
+Thus, one insert the annotation in the Seurat Object in the rigth assay
+
+```{r}
+ Annotation(SEU_Multi[["ATAC"]]) <- annotation
+SEU_Multi@assays[["ATAC"]]@annotation@seqnames
+```
+
+#Gene Expression data processing and analysis
+
+After that, one can start with the processing of the data. Let's start with the scRNA-seq data separately.
+
+First the QC metrics calculation, to ensure te quality of the dataset
+```{r}
+DefaultAssay(SEU_Multi) <- "RNA"
+SEU_Multi[["percent.mt"]] <- PercentageFeatureSet(SEU_Multi, pattern = "^MT-")
+VlnPlot(SEU_Multi, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+For the full explanation of the workflow we refer to the Seurat tutorial.
+
+```{r}
+DefaultAssay(SEU_Multi) <- "RNA"
+    SEU_Multi <- SCTransform(SEU_Multi)
+    SEU_Multi <- FindVariableFeatures(SEU_Multi, nfeatures = 3000)
+    SEU_Multi <- ScaleData(SEU_Multi)
+    SEU_Multi <- RunPCA(SEU_Multi, npcs = 30)
+    SEU_Multi <- RunUMAP(SEU_Multi, dims = 1:30, reduction.name = "umap.rna")
+    SEU_Multi <- FindNeighbors(SEU_Multi, dims = 1:30)
+    SEU_Multi <- FindClusters(SEU_Multi, resolution = 0.8, algorithm = 3)
+    
+    DimPlot(SEU_Multi, label = TRUE, label.size = 8, repel = TRUE)+ NoLegend() + ggtitle("Seurat") + theme(plot.title = element_text(hjust = 0.5, size = 25 ),axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5)
+```
+
+#ScATAC-seq data separate analysis
+
+The scATAC-seq data analysis is analogous to the previous one, a part from the QC metrics which are specific to epigenetic data. Before starting, one needs to change assay, in order to work and store the rigth data in the right place.
+```{r}
+DefaultAssay(SEU_Multi) <- "ATAC"
+SEU_Multi <- NucleosomeSignal(SEU_Multi)
+SEU_Multi <- TSSEnrichment(SEU_Multi)
+Idents(SEU_Multi) <- "orig.ident"
+
+VlnPlot(
+  object = SEU_Multi,
+  features = c("nCount_RNA", "nCount_ATAC", "TSS.enrichment", "nucleosome_signal"),
+  ncol = 4,
+  pt.size = 0
+)
+```
+
+```{r}
+DefaultAssay(SEU_Multi) <- "ATAC"
+SEU_Multi <- FindTopFeatures(SEU_Multi, min.cutoff = 5)
+SEU_Multi <- RunTFIDF(SEU_Multi)
+SEU_Multi <- RunSVD(SEU_Multi)
+SEU_Multi <- RunUMAP(SEU_Multi, reduction = 'lsi', dims = 2:30, reduction.name = 'umap.atac')
+SEU_Multi <- FindNeighbors(SEU_Multi,reduction = 'lsi', dims = 2:30)
+SEU_Multi <- FindClusters(SEU_Multi, resolution = 1.1)
+DimPlot(SEU_Multi, label = TRUE, label.size = 8, repel = TRUE) + NoLegend() +  ggtitle("Seurat") + theme(plot.title = element_text(hjust = 0.5, size = 25),axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
+```{r}
+DefaultAssay(SEU_Multi) <- "ATAC"
+Idents(SEU_Multi) <- "SCT_snn_res.0.8"
+DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE)  +  ggtitle("RNA transfered to ATAC") + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18) ) +  guides(color = guide_legend(ncol = 2, override.aes = list(size = 3)))
+ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_on_ATAC_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+#, label = TRUE, label.size = 7, pt.size = 1.5) + ggtitle("SIGNAC ATAC CLUSTERING")
+#ggsave(file = "SIGNAC ATAC CLUSTERING.png",width = 12, height = 7.8)
+```
+
+```{r}
+DefaultAssay(SEU_Multi) <- "SCT"
+Idents(SEU_Multi) <- "ATAC_snn_res.1.1"
+DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE)  +  ggtitle("ATAC transfered to RNA") + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_on_RNA_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+#, label = TRUE, label.size = 7, pt.size = 1.5) + ggtitle("SIGNAC ATAC CLUSTERING")
+#ggsave(file = "SIGNAC ATAC CLUSTERING.png",width = 12, height = 7.8)
+```
+
+#Cell type classification with label transfer
+
+Seurat provides a method to classify the cells in the dataset, based on the label transfer from an existing and already labeled dataset. This type of classification rely on the fact that exist a dataset of the same type of sample, already labeled and most importantly reliable, which is not always the case. Nevertheless, human PBMC is one of the most studied sample, and Seurat provides a reference processed dataset to employ.
+
+First one needs to load the Seurat Object with the reference data.
+
+```{r}
+reference <- LoadH5Seurat("../DATA/ref/pbmc_multimodal.h5seurat")
+DefaultAssay(SEU_Multi) <- "SCT"
+```
+
+```{r}
+transfer_anchors <- FindTransferAnchors(
+  reference = reference,
+  query = SEU_Multi,
+  normalization.method = "SCT",
+  reference.reduction = "spca",
+  recompute.residuals = FALSE,
+  dims = 1:50
+)
+```
+
+```{r}
+predictions <- TransferData(
+  anchorset = transfer_anchors, 
+  refdata = reference$celltype.l2,
+  weight.reduction = SEU_Multi[['pca']],
+  dims = 1:30
+)
+```
+
+```{r}
+SEU_Multi <- AddMetaData(
+  object = SEU_Multi,
+  metadata = predictions
+)
+```
+
+One can then visualize the dataset with the predicted labels
+
+```{r}
+# set the cell identities to the cell type predictions
+Idents(SEU_Multi) <- "predicted.id"
+DefaultAssay(SEU_Multi) <- "SCT"
+DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE) + NoLegend() + ggtitle("Cell-types on RNA") + theme(plot.title = element_text(hjust = 0.5, size = 25),axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_cellt_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+DefaultAssay(SEU_Multi) <- "ATAC"
+DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE) + NoLegend() + ggtitle("Cell-types on ATAC")  + theme(plot.title = element_text(hjust = 0.5, size = 25),axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_cellt_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
+#Integrated visualization
+
+A part from the separate analysis, the first step towards a more integrative investigation of the multimodal dataset is the integrative visualization. It means to obtain a 2D visualization based on the integration of the two UMAP visualization coming from the separate analysis.
+
+```{r}
+DefaultAssay(SEU_Multi) <- "RNA"
+
+SEU_Multi <- FindMultiModalNeighbors(
+  object = SEU_Multi,
+  reduction.list = list("pca", "lsi"), 
+  dims.list = list(1:30, 2:30),
+  modality.weight.name = "RNA.weight",
+  verbose = TRUE
+)
+```
+
+```{r}
+#build a joint UMAP visualization
+SEU_Multi <- RunUMAP(
+  object = SEU_Multi,
+  nn.name = "weighted.nn",
+  assay = "RNA",
+  verbose = TRUE
+)
+
+DimPlot(SEU_Multi, label = TRUE, repel = TRUE, reduction = "umap") + NoLegend()
+```
+
+```{r}
+DefaultAssay(SEU_Multi) <- "RNA"
+Idents(SEU_Multi) <- "predicted.id"
+DimPlot(SEU_Multi, label = TRUE, repel = TRUE, reduction = "umap",label.size = 8) + ggtitle("Co-embedding") + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "Co-embedding_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
+```{r}
+rm(reference)
+```
+
+#Gene Activity Matrix (GAM)
+
+Next is the Gene Activity Matrix calculation from ATAC data.
+
+The gene activity is a medium between gene expression and chromatin accessibility. It describes the accessibility of the genetic regions inside the cells of the datasets. There are different ways to create it, here we expose how to do it with Signac.
+
+The latter, perform the calculation employing one easy step.
+
+```{r}
+DefaultAssay(SEU_Multi) <- "ATAC"
+gene.activities <- GeneActivity(SEU_Multi)
+```
+
+After the GAM creation, one can process it, treating it like a gene expression matrix.
+
+```{r}
+SEU_Multi[['ACTIVITY']] <- CreateAssayObject(counts = gene.activities)
+
+DefaultAssay(SEU_Multi) <- "ACTIVITY"
+
+SEU_Multi <- FindVariableFeatures(SEU_Multi, nfeatures = 3000)
+SEU_Multi <- NormalizeData(
+    object = SEU_Multi,
+    assay = 'ACTIVITY',
+    normalization.method = 'LogNormalize'
+)
+SEU_Multi <- ScaleData(SEU_Multi)
+SEU_Multi <- RunPCA(SEU_Multi, npcs = 30)
+SEU_Multi <- RunUMAP(SEU_Multi, dims = 1:30, reduction.name = "umap.activity")
+SEU_Multi <- FindNeighbors(SEU_Multi, dims = 1:30)
+SEU_Multi <- FindClusters(SEU_Multi, resolution = 0.5, algorithm = 3)
+```
+
+```{r}
+DefaultAssay(SEU_Multi) <- "ACTIVITY"
+Idents(SEU_Multi) <- "predicted.id"
+DimPlot(SEU_Multi, label = TRUE, label.size = 8, repel = TRUE) + NoLegend()+ ggtitle("Signac")+ theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18)) 
+ggsave(path = "../TMPResults/IMAGES/", filename = "Activity_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
+#Comparative Differential analysis
+The comparative Differential analysis consists in performing differenatial activity analysis on the GAM data to understand if the genes that are related to specific cell type (or cluster), at the transcriptomic level (i.e., DE genes and marker genes), appear to be also differentially active, meaning they are specific also at the epigenomic level. To do so, one takes the processed GAM, and performs the differential analysis, based on diffrent classifications, including: GAM derived clustering cell-type classification scRNA-seq derived clustering From the results, one looks for the wanted genes, to look if they are related to the same group of cells.
+
+In this way one makes a cross-modality assessment of the cell-specific genes.
+
+```{r, eval=FALSE}
+Idents(SEU_Multi) <- "predicted.id"
+ SEU_activity_markers_cell_type <- FindAllMarkers(
+   object = SEU_Multi,
+   min.pct = 0.05,
+   test.use = 'LR'
+)
+```
+
+```{r, eval=FALSE}
+Idents(SEU_Multi) <- "ACTIVITY_snn_res.0.5"
+SEU_activity_markers_activity_cluster <- FindAllMarkers(
+  object = SEU_Multi,
+  min.pct = 0.05,
+  test.use = 'LR'
+)
+
+```
+
+```{r,eval=FALSE}
+Idents(SEU_Multi) <- "SCT_snn_res.0.8"
+SEU_activity_markers_RNA_cluster <- FindAllMarkers(
+  object = SEU_Multi, 
+  min.pct = 0.05,
+  test.use = 'LR'
+)
+```
+
+Let's plot the activity levels of some recognized markers, namely CD8A, MS4A1, CD14, and IL7R.
+
+```{r}
+
+FeaturePlot(SEU_Multi,features = "CD8A", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
+ggsave(path = "../TMPResults/IMAGES/", filename = "CD8A.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+
+FeaturePlot(SEU_Multi,features = "MS4A1", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
+ggsave(path = "../TMPResults/IMAGES/", filename = "MS4A1.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+FeaturePlot(SEU_Multi,features = "CD14", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
+ggsave(path = "../TMPResults/IMAGES/", filename = "CD14.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+FeaturePlot(SEU_Multi,features = "IL7R", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
+ggsave(path = "../TMPResults/IMAGES/", filename = "IL7R.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+```
+
