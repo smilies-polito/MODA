@@ -105,5 +105,7 @@ Running the code will also output all the plots generated in the notebooks, save
 ├── Results                                    // Results folder
 |    └── IMAGES                                // Images produced
 |
+├── Supplementary Material.docx                // Supplementary material to the paper
+|
 └── README.md                                  // This README file    
 ```
