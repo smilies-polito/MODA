@@ -12,125 +12,6 @@ N.B. This may require the installation of local libraries. Please check the READ
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-
-if (!requireNamespace("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-BiocManager::install()
-
-BiocManager::install(c('BiocGenerics', 'DelayedArray', 'DelayedMatrixStats',
-                       'limma', 'lme4', 'S4Vectors', 'SingleCellExperiment',
-                       'SummarizedExperiment', 'batchelor', 'Matrix.utils',
-                       'HDF5Array', 'terra', 'ggrastr'))
-
-
-if (!requireNamespace("devtools", quietly = TRUE)) 
-  install.packages("devtools", dependencies = c("Depends"))
-
-{if (!requireNamespace("memoise", quietly = TRUE)) 
-  install.packages("memoise", dependencies = c("Depends"))
-
-if (!requireNamespace("miniUI", quietly = TRUE)) 
-  install.packages("miniUI", dependencies = c("Depends"))
-
-if (!requireNamespace("shiny", quietly = TRUE))
-  install.packages("shiny", dependencies = c("Depends"))
-
-if (!requireNamespace("htmltools", quietly = TRUE))
-  install.packages("htmltools", dependencies = c("Depends"))
-
-if (!requireNamespace("httpuv", quietly = TRUE))
-  install.packages("httpuv", dependencies = c("Depends"))
-
-if (!requireNamespace("httpuv", quietly = TRUE))
-  install.packages("httpuv", dependencies = c("Depends"))
-
-if (!requireNamespace("later", quietly = TRUE))
-  install.packages("later", dependencies = c("Depends"))
-
-if (!requireNamespace("promises", quietly = TRUE))
-  install.packages("promises", dependencies = c("Depends"))
-
-if (!requireNamespace("xtable", quietly = TRUE))
-  install.packages("xtable", dependencies = c("Depends"))
-
-if (!requireNamespace("pkgbuild", quietly = TRUE))
-  install.packages("pkgbuild", dependencies = c("Depends"))
-
-if (!requireNamespace("profvis", quietly = TRUE))
-  install.packages("profvis", dependencies = c("Depends"))
-
-if (!requireNamespace("remotes", quietly = TRUE))
-  install.packages("remotes", dependencies = c("Depends"))
-
-if (!requireNamespace("sessioninfo", quietly = TRUE))
-  install.packages("sessioninfo", dependencies = c("Depends"))
-
-if (!requireNamespace("urlchecker", quietly = TRUE))
-  install.packages("urlchecker", dependencies = c("Depends"))
-}
-
-devtools::install_github("cole-trapnell-lab/cicero-release", ref = "monocle3")
-BiocManager::install(c("Gviz", "GenomicRanges", "rtracklayer"))
-
-if (!requireNamespace("tidyverse", quietly = TRUE)) 
-  install.packages("tidyverse", dependencies = c("Depends"))
-
-if (!requireNamespace("aricode", quietly = TRUE)) 
-  install.packages("aricode", dependencies = c("Depends"))
-
-if (!requireNamespace("Seurat", quietly = TRUE)) 
-  install.packages("Seurat", dependencies = c("Depends"))
-
-if (!requireNamespace("R.utils", quietly = TRUE)) 
-  install.packages("R.utils", dependencies = c("Depends"))
-
-if (!requireNamespace("SeuratWrappers", quietly = TRUE)) 
-  remotes::install_github('satijalab/seurat-wrappers')
-
-if (!requireNamespace("Signac", quietly = TRUE)) 
-  install.packages("Signac", dependencies = c("Depends"))
-
-if (!requireNamespace("readsparse", quietly = TRUE)) 
-  install.packages("readsparse", dependencies = c("Depends"))
-
-if (!requireNamespace("leiden", quietly = TRUE)) 
-  install.packages("leiden", dependencies = c("Depends"))
-
-if (!requireNamespace("hdf5r", quietly = TRUE)) 
-  install.packages("hdf5r", dependencies = c("Depends"))
-
-install.packages('BiocManager', dependencies = c("Depends"))
-BiocManager::install()
-BiocManager::install('multtest')
-
-if (!requireNamespace("data.table", quietly = TRUE)) 
-  install.packages("data.table", dependencies = c("Depends"))
-
-if (!requireNamespace("cellranger", quietly = TRUE)) 
-  install.packages("cellranger", dependencies = c("Depends"))
-
-if (!requireNamespace("readxl", quietly = TRUE)) 
-  install.packages("readxl", dependencies = c("Depends"))
-
-if (!requireNamespace("sctransform", quietly = TRUE)) 
-  install.packages("sctransform", dependencies = c("Depends"))
-
-if (!requireNamespace("class", quietly = TRUE)) 
-  install.packages("class", dependencies = c("Depends"))
-
-if (!requireNamespace("GenomeInfoDb", quietly = TRUE)) 
-  install.packages("GenomeInfoDb", dependencies = c("Depends"))
-
-BiocManager::install(c("org.Mm.eg.db", "org.Hs.eg.db"))
-devtools::install_github("cole-trapnell-lab/garnett", ref="monocle3")
-devtools::install_github('satijalab/seurat-data')
-
-if (!requireNamespace("SeuratDisk", quietly = TRUE)) {
-  remotes::install_github("mojaveazure/seurat-disk")
-}
-
-```
 
 ## R Libraries
 
@@ -208,7 +89,7 @@ CDS_RNA <- reduce_dimension(CDS_RNA, reduction_method = 'UMAP',
 CDS_RNA <- cluster_cells(CDS_RNA, resolution=0.5e-3)
 #final plotting
 plot_cells(CDS_RNA,reduction_method = 'UMAP', group_label_size = 8)  + labs(title = "Monocle3") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18))
-ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_clustering_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5)
+ggsave(path = "../Results/IMAGES/", filename = "RNA_clustering_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5)
 ```
 
 After processing, one can perform differential expression analysis, to understand which genes identifies the cell clusters.
@@ -232,7 +113,7 @@ plot_genes_by_group(CDS_RNA,
                     group_cells_by="cluster",
                     ordering_type="maximal_on_diag") +  guide_legend(title = "")
 
-ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_DE_Monocle.pdf", width = 720, height = 900, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "RNA_DE_Monocle.pdf", width = 720, height = 900, units= "px",scale = 3.5 )
 
 ```
 
@@ -255,7 +136,7 @@ CDS_ATAC <- detect_genes(CDS_ATAC)
   CDS_ATAC <- cluster_cells(CDS_ATAC, resolution=0.7e-3)
 #plot the results based on ATAC data alone
 plot_cells(CDS_ATAC,reduction_method = 'UMAP', group_label_size = 8)  + labs(title = "Monocle3") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"), axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_clustering_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "ATAC_clustering_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 Agein one can perform differential analysis, to understand which peaks characterize the clusters. In this case, the process tends to be more lengthy and, moreover, the results are not particularly satisfactory. Therefore, it is not always particularly useful to perform.
 
@@ -275,7 +156,7 @@ plot_genes_by_group(CDS_ATAC,
                     top_specific_marker_ids_atac,
                     group_cells_by="cluster",
                     ordering_type="maximal_on_diag")
-ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_DE_Monocle.pdf", width = 720, height = 900, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "ATAC_DE_Monocle.pdf", width = 720, height = 900, units= "px",scale = 3.5 )
 
 ```
 
@@ -303,7 +184,7 @@ CDS_RNA <- classify_cells(CDS_RNA, pbmc_classifier,
 #plot the classified cells
 plot_cells(CDS_RNA,
            color_cells_by="cluster_ext_type", label_cell_groups = FALSE, )  + ggtitle("Garnett Learned Cell Types") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size=6), title = "Cell types", title.theme = element_text(size = 20), label.theme = element_text(size = 14)) )
-ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_classification_Garnett.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "RNA_classification_Garnett.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
 ```{r}
@@ -312,7 +193,7 @@ colnames(cluster_ext_type) <- "CLASS"
 CDS_ATAC@colData@listData[["cluster_ext_type"]] <- cluster_ext_type$CLASS
 plot_cells(CDS_ATAC,
            color_cells_by="cluster_ext_type", label_cell_groups = FALSE, )  + ggtitle("Garnett Learned Cell Types") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size=6), title = "Cell types", title.theme = element_text(size = 20), label.theme = element_text(size = 14)) )
-ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_classification_Garnett.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "ATAC_classification_Garnett.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
 #Classifications comparison
@@ -353,11 +234,11 @@ CDS_RNA@colData@listData[["MON_class_ATAC"]] <- MON_class_ATAC$CLASS
 CDS_ATAC@colData@listData[["MON_class_RNA"]] <- MON_class_RNA$CLASS
 
 plot_cells(CDS_RNA,reduction_method = 'UMAP', group_label_size = 8, color_cells_by = "MON_class_ATAC", label_groups_by_cluster = FALSE)  + labs(title = "ATAC transfered to RNA") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_to_RNA_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "ATAC_to_RNA_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 
 
 plot_cells(CDS_ATAC,reduction_method = 'UMAP', group_label_size = 8, color_cells_by =  "MON_class_RNA", label_groups_by_cluster = FALSE)  + labs(title = "RNA transfered to ATAC") + theme(plot.title = element_text(hjust = 0.5, size = 25,face = "bold"),axis.title = element_text(size = 18))
-ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_to_ATAC_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "RNA_to_ATAC_Monocle.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 
 ```
 
@@ -474,7 +355,7 @@ CDS_ACTIVITY <- reduce_dimension(CDS_ACTIVITY, reduction_method = 'UMAP',
 CDS_ACTIVITY = cluster_cells(CDS_ACTIVITY, resolution=1e-3)
 
 plot_cells(CDS_ACTIVITY,reduction_method = 'UMAP', group_label_size = 8)  + labs(title = "Cicero Gene Activity") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18))
-ggsave(path = "../TMPResults/IMAGES/", filename = "Activity_clustering_Cicero.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "Activity_clustering_Cicero.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 
 ```
 
@@ -486,7 +367,7 @@ CDS_ACTIVITY@colData@listData[["MON_class_RNA"]] <- MON_class_RNA$CLASS
 CDS_ACTIVITY@colData@listData[["cluster_ext_type"]] <- cluster_ext_type$CLASS
 plot_cells(CDS_ACTIVITY,
            color_cells_by="cluster_ext_type", label_cell_groups = FALSE, )  + ggtitle("Cicero") + theme(plot.title = element_text(hjust = 0.5, size = 25, face = "bold"),axis.title = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size=6), title = "Cell types", title.theme = element_text(size = 20), label.theme = element_text(size = 14)) )
-ggsave(path = "../TMPResults/IMAGES/", filename = "Activity_celltype_Cicero.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "Activity_celltype_Cicero.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
 #Comparative Differential analysis

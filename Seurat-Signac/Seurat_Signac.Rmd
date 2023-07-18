@@ -120,7 +120,7 @@ DefaultAssay(SEU_Multi) <- "RNA"
     SEU_Multi <- FindClusters(SEU_Multi, resolution = 0.8, algorithm = 3)
     
     DimPlot(SEU_Multi, label = TRUE, label.size = 8, repel = TRUE)+ NoLegend() + ggtitle("Seurat") + theme(plot.title = element_text(hjust = 0.5, size = 25 ),axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5)
+ggsave(path = "../Results/IMAGES/", filename = "RNA_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5)
 ```
 
 #ScATAC-seq data separate analysis
@@ -149,14 +149,14 @@ SEU_Multi <- RunUMAP(SEU_Multi, reduction = 'lsi', dims = 2:30, reduction.name =
 SEU_Multi <- FindNeighbors(SEU_Multi,reduction = 'lsi', dims = 2:30)
 SEU_Multi <- FindClusters(SEU_Multi, resolution = 1.1)
 DimPlot(SEU_Multi, label = TRUE, label.size = 8, repel = TRUE) + NoLegend() +  ggtitle("Seurat") + theme(plot.title = element_text(hjust = 0.5, size = 25),axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "ATAC_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
 ```{r}
 DefaultAssay(SEU_Multi) <- "ATAC"
 Idents(SEU_Multi) <- "SCT_snn_res.0.8"
 DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE)  +  ggtitle("RNA transfered to ATAC") + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18) ) +  guides(color = guide_legend(ncol = 2, override.aes = list(size = 3)))
-ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_on_ATAC_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "RNA_on_ATAC_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 #, label = TRUE, label.size = 7, pt.size = 1.5) + ggtitle("SIGNAC ATAC CLUSTERING")
 #ggsave(file = "SIGNAC ATAC CLUSTERING.png",width = 12, height = 7.8)
 ```
@@ -165,7 +165,7 @@ ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_on_ATAC_Seurat.pdf", widt
 DefaultAssay(SEU_Multi) <- "SCT"
 Idents(SEU_Multi) <- "ATAC_snn_res.1.1"
 DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE)  +  ggtitle("ATAC transfered to RNA") + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_on_RNA_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "ATAC_on_RNA_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 #, label = TRUE, label.size = 7, pt.size = 1.5) + ggtitle("SIGNAC ATAC CLUSTERING")
 #ggsave(file = "SIGNAC ATAC CLUSTERING.png",width = 12, height = 7.8)
 ```
@@ -215,10 +215,10 @@ One can then visualize the dataset with the predicted labels
 Idents(SEU_Multi) <- "predicted.id"
 DefaultAssay(SEU_Multi) <- "SCT"
 DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE) + NoLegend() + ggtitle("Cell-types on RNA") + theme(plot.title = element_text(hjust = 0.5, size = 25),axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "RNA_cellt_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "RNA_cellt_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 DefaultAssay(SEU_Multi) <- "ATAC"
 DimPlot(SEU_Multi, label = TRUE,label.size = 8, repel = TRUE) + NoLegend() + ggtitle("Cell-types on ATAC")  + theme(plot.title = element_text(hjust = 0.5, size = 25),axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "ATAC_cellt_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "ATAC_cellt_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
 #Integrated visualization
@@ -253,7 +253,7 @@ DimPlot(SEU_Multi, label = TRUE, repel = TRUE, reduction = "umap") + NoLegend()
 DefaultAssay(SEU_Multi) <- "RNA"
 Idents(SEU_Multi) <- "predicted.id"
 DimPlot(SEU_Multi, label = TRUE, repel = TRUE, reduction = "umap",label.size = 8) + ggtitle("Co-embedding") + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "Co-embedding_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "Co-embedding_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
 ```{r}
@@ -297,7 +297,7 @@ SEU_Multi <- FindClusters(SEU_Multi, resolution = 0.5, algorithm = 3)
 DefaultAssay(SEU_Multi) <- "ACTIVITY"
 Idents(SEU_Multi) <- "predicted.id"
 DimPlot(SEU_Multi, label = TRUE, label.size = 8, repel = TRUE) + NoLegend()+ ggtitle("Signac")+ theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18)) 
-ggsave(path = "../TMPResults/IMAGES/", filename = "Activity_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "Activity_Seurat.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
 #Comparative Differential analysis
@@ -338,13 +338,13 @@ Let's plot the activity levels of some recognized markers, namely CD8A, MS4A1, C
 ```{r}
 
 FeaturePlot(SEU_Multi,features = "CD8A", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
-ggsave(path = "../TMPResults/IMAGES/", filename = "CD8A.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "CD8A.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 
 FeaturePlot(SEU_Multi,features = "MS4A1", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
-ggsave(path = "../TMPResults/IMAGES/", filename = "MS4A1.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "MS4A1.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 FeaturePlot(SEU_Multi,features = "CD14", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
-ggsave(path = "../TMPResults/IMAGES/", filename = "CD14.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "CD14.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 FeaturePlot(SEU_Multi,features = "IL7R", pt.size = 1) + theme(plot.title = element_text(hjust = 0.5, size = 25), axis.title = element_text(size = 18))
-ggsave(path = "../TMPResults/IMAGES/", filename = "IL7R.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
+ggsave(path = "../Results/IMAGES/", filename = "IL7R.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
