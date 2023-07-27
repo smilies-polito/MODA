@@ -10,6 +10,8 @@ Martini L., Bardini R., Savino A., and Di Carlo S. An overview on multi-omic sin
 
 This Repository is uploaded on Zenodo under the DOI 10.5281/zenodo.8188656.
 
+The Repository is alsoavailable on github at https://github.com/smilies-polito/MODA.git
+
 ## Description
 
 This repository aims to not only share the code to obtain the results but gives step-by-step commented workflow notebooks, for the three different methods discussed in the paper.
