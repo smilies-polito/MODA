@@ -8,6 +8,8 @@ It aims to give some guidelines and good practice for whoever wants to start wor
 
 Martini L., Bardini R., Savino A., and Di Carlo S. An overview on multi-omic single-cell data joint analysis: good practices and results, 2023 (submitted to NAR Genomics and Bionformatics)
 
+This Repository is uploaded on Zenodo under the DOI 10.5281/zenodo.8188656.
+
 ## Description
 
 This repository aims to not only share the code to obtain the results but gives step-by-step commented workflow notebooks, for the three different methods discussed in the paper.
