@@ -1,6 +1,6 @@
 # MODA
 
-This repository contains the code, the notebooks, and the supplementary material for "An overview on multi-omic single-cell data joint analysis: good practices and results"
+This repository contains the code, the notebooks, and the supplementary material for "An overview on multi-omic single-cell data joint analysis: good practices and results".
 
 It aims to give some guidelines and good practice for whoever wants to start working with multi-Omic data analysis, specifically scRNA-seq + scATAC-seq datasets.
 
@@ -11,7 +11,7 @@ Martini L., Bardini R., Savino A., and Di Carlo S. An overview on multi-omic sin
 ## Description
 
 This repository aims to not only share the code to obtain the results but gives step-by-step commented workflow notebooks, for the three different methods discussed in the paper.
-
+Specifically, the repo comprises of three sections, one for each pipeline (`Monocle3`/`Cicero`, `Seurat`/`Signac`, `Scanpy`/`Episcanpy`), consisting of the notebooks with the commented code and results. For each one it is also provided a HTML image to just look at them.
 
 ## Experimental setup
 
@@ -23,12 +23,12 @@ Depending on the language you need to set up the environment.
 
 ### R
 We made use of the renv library for ensuring reproducibility.
-After installing R version X.XX, run the Renv package installation
+After installing R version 4.2.1, run the `Renv` (v. 0.15.5) package installation
 
 ```
 install.packages("renv")
 ```
-From inside one of the R pipeline folders, create an R project and run 
+From inside one of the R pipeline folders, create an R project and run: 
 
 ```
 renv::init()
@@ -39,7 +39,7 @@ This will take the renv.lock situated in the working directory and restore the n
 
 ### Python
 
-One can find the requirement file for the needed packages in the Scanpy-Episcanpy.
+One can find the requirement file for the needed packages in the Scanpy-Episcanpy folder.
 
 After installing them, you can work on the jupyter notebook directly.
 
@@ -64,7 +64,7 @@ More data required are the garnett classifier (downloadable here https://cole-tr
 Since the co-accessbility calculation on the whole genome is a very long and computationally heavy calculation we provide als provide also the co-accessibility table resulted from it in the DATA/conns folder.
 ## R markdown Rendering
 
-TO run and render the markdown file run the following lines:
+To run and render the markdown file run the following lines:
 
 from the Monocle3-Cicero folder
 ```

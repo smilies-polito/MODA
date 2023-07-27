@@ -1,12 +1,12 @@
 ---
-title: "Untitled"
+title: "Monocle3-Cicero"
 author: "Lorenzo Martini"
 date: "2023-05-30"
 output: html_document
 ---
-#Monocle3 and Cicero processing of 10X multimodal PBMC dataset
-##INSTALL REQUIRED PACKAGES IF NEEDED
-N.B. This may require the installation of local libraries. Please check the README file of the project for a list of required packages
+# Monocle3 and Cicero processing of 10X multimodal PBMC dataset
+## INSTALL REQUIRED PACKAGES IF NEEDED
+N.B. This may require the installation of local libraries. Please check the README file of the project for a list of required packages and 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -64,13 +64,13 @@ RNA_matrix <- matrix[genes$gene_short_name,]
 ATAC_matrix <- matrix[peaks$V2,]
 ```
 
-#Gene Expression data processing and analysis
+# Gene Expression data processing and analysis
 
-Next, the two matrices are processed separately, following the suggested workflow, better discussed in their tutorial [].
+Next, the two matrices are processed separately, following the suggested workflow, better discussed in their tutorial.
 
 We start with the Gene Expression data.
 
-The processing ends with the visualiztion of the clustered cells. The main parameter one can fine-tune is the resolution. Here the value is the one advised for datasets this large, but one can change if it appears result in too many or too few clusters.
+The processing ends with the visualization of the clustered cells. The main parameter one can fine-tune is the resolution. Here the value is the one advised for datasets this large, but one can change if it appears result in too many or too few clusters.
 
 ```{r}
 #Creation of the CDS object
@@ -117,7 +117,7 @@ ggsave(path = "../Results/IMAGES/", filename = "RNA_DE_Monocle.pdf", width = 720
 
 ```
 
-#ScATAC-seq data separate analysis
+# ScATAC-seq data separate analysis
 
 The same workflow is necessary to process the epigenetic data. One needs to remeber to binarize the matrix, before going on. Again the final result is the visulaiztion of the cells divided in clusters, which should be, in some way, similar to the previous one.
 ```{r}
@@ -166,7 +166,7 @@ saveRDS(CDS_RNA,"CDS_RNA")
 saveRDS(CDS_ATAC,"CDS_ATAC")
 ```
 
-#Cell type classification with Garnett
+# Cell type classification with Garnett
 Now, one needs to classify the cells. The most direct way to do it when working with Monocle is to employ Garnett, since it has a direct integration.
 In this case, since we are working with a PBMC sample, we can use the trained classifier directly provided by Garnett from here: https://cole-trapnell-lab.github.io/garnett/classifiers/
 
@@ -196,7 +196,7 @@ plot_cells(CDS_ATAC,
 ggsave(path = "../Results/IMAGES/", filename = "ATAC_classification_Garnett.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
-#Classifications comparison
+# Classifications comparison
 
 With all the previous processes, one obtains various classifications of the cells. To understand how much the are similar between each other, one can employ information theory concepts like ARI and AMI. In particular we want to understand if the clustering obtained from the processing of the data is consistent with the cell-type classification.
 
@@ -242,7 +242,7 @@ ggsave(path = "../Results/IMAGES/", filename = "RNA_to_ATAC_Monocle.pdf", width 
 
 ```
 
-#Gene Activity Matrix (GAM)
+# Gene Activity Matrix (GAM)
 
 Next is the Gene Activity Matrix calculation from ATAC data.
 
@@ -370,7 +370,7 @@ plot_cells(CDS_ACTIVITY,
 ggsave(path = "../Results/IMAGES/", filename = "Activity_celltype_Cicero.pdf", width = 854, height = 480, units= "px",scale = 3.5 )
 ```
 
-#Comparative Differential analysis
+# Comparative Differential analysis
 
 The comparative Differential analysis consists in performing differenatial activity analysis on the GAM data to understand if the genes that are related to specific cell type (or cluster), at the transcriptomic level (i.e., DE genes and marker genes), appear to be also differentially active, meaning they are specific also at the epigenomic level. To do so, one takes the processed GAM, and performs the differential analysis, based on diffrent classifications, including: GAM derived clustering cell-type classification scRNA-seq derived clustering From the results, one looks for the wanted genes, to look if they are related to the same group of cells.
 
